@@ -3,22 +3,22 @@
    Change these variables to re-skin the entire app instantly.
    ============================================================ */
 :root {
-  --bg-base:      #0a0a12;
-  --bg-surface:   #13131f;
-  --bg-card:      #1a1a2e;
-  --bg-hover:     #20203a;
-  --accent:       #e91e8c;
-  --accent-dim:   rgba(233,30,140,0.18);
-  --accent-glow:  rgba(233,30,140,0.35);
-  --accent-hover: #c41a74;
-  --success:      #00c896;
-  --danger:       #ff4757;
-  --warning:      #f0b429;
-  --text-primary: #f2f2f8;
-  --text-secondary:#8888aa;
-  --text-muted:   #44445a;
-  --border:       #252540;
-  --border-accent:rgba(233,30,140,0.4);
+  --bg-base:      #120e0a;
+  --bg-surface:   #1c1510;
+  --bg-card:      #261c14;
+  --bg-hover:     #31241a;
+  --accent:       #b8763e;
+  --accent-dim:   rgba(184,118,62,0.18);
+  --accent-glow:  rgba(184,118,62,0.35);
+  --accent-hover: #9c5f2e;
+  --success:      #8fae5d;
+  --danger:       #d9534f;
+  --warning:      #d9a440;
+  --text-primary: #f3ece2;
+  --text-secondary:#a8967f;
+  --text-muted:   #5c4f3f;
+  --border:       #3a2c1f;
+  --border-accent:rgba(184,118,62,0.4);
   --font-head:    'Playfair Display', Georgia, serif;
   --font-body:    'Inter', system-ui, sans-serif;
   --radius-sm:    8px;
@@ -130,7 +130,7 @@ img { max-width: 100%; display: block; }
 .dr-alert-success { background: rgba(0,200,150,.12); color: var(--success); border-color: var(--success); }
 .dr-alert-danger, .dr-alert-error { background: rgba(255,71,87,.12); color: var(--danger); border-color: var(--danger); }
 .dr-alert-warning { background: rgba(240,180,41,.12); color: var(--warning); border-color: var(--warning); }
-.dr-alert-info { background: rgba(233,30,140,.1); color: #d070b0; border-color: var(--accent); }
+.dr-alert-info { background: rgba(184,118,62,.1); color: #d4a574; border-color: var(--accent); }
 
 /* ============================================================
    TOASTS
@@ -156,7 +156,7 @@ img { max-width: 100%; display: block; }
 .dr-toast button:hover { opacity:1; }
 .toast-success { background: rgba(0,200,150,.2); color: var(--success); border:1px solid rgba(0,200,150,.35); }
 .toast-error   { background: rgba(255,71,87,.2);  color: var(--danger);  border:1px solid rgba(255,71,87,.35); }
-.toast-info    { background: rgba(233,30,140,.15); color: #d070b0;        border:1px solid rgba(233,30,140,.3); }
+.toast-info    { background: rgba(184,118,62,.15); color: #d4a574;        border:1px solid rgba(184,118,62,.3); }
 
 /* ============================================================
    BUTTONS
@@ -318,7 +318,7 @@ img { max-width: 100%; display: block; }
 .item-card-img {
   position: relative;
   aspect-ratio: 1;
-  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  background: linear-gradient(135deg, #261c14, #1c1510);
   overflow: hidden;
 }
 .person-card-img { aspect-ratio: 3/4; }
@@ -361,8 +361,8 @@ img { max-width: 100%; display: block; }
   pointer-events: none;
 }
 .starter-badge {
-  background: rgba(233,30,140,.25); color: var(--accent);
-  border: 1px solid rgba(233,30,140,.4);
+  background: rgba(184,118,62,.25); color: var(--accent);
+  border: 1px solid rgba(184,118,62,.4);
 }
 .pose-badge {
   background: rgba(0,200,150,.2); color: var(--success);
@@ -376,7 +376,7 @@ img { max-width: 100%; display: block; }
 .photo-select-card .item-card-img { aspect-ratio: 3/4; cursor: pointer; }
 .photo-select-overlay {
   position: absolute; inset: 0;
-  background: rgba(233,30,140,.7);
+  background: rgba(184,118,62,.7);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   color: #fff; gap: .4rem;
@@ -402,8 +402,8 @@ img { max-width: 100%; display: block; }
    ============================================================ */
 .dr-info-box {
   display: flex; align-items: flex-start; gap: .5rem;
-  background: rgba(233,30,140,.08);
-  border: 1px solid rgba(233,30,140,.2);
+  background: rgba(184,118,62,.08);
+  border: 1px solid rgba(184,118,62,.2);
   border-radius: var(--radius-sm);
   padding: .75rem 1rem; font-size: .82rem;
   color: var(--text-secondary);
@@ -418,7 +418,7 @@ img { max-width: 100%; display: block; }
 }
 .dr-processing-note {
   display: flex; align-items: center; gap: .5rem;
-  background: rgba(233,30,140,.08);
+  background: rgba(184,118,62,.08);
   border-radius: var(--radius-sm); padding: .6rem .85rem;
   color: var(--text-secondary); font-size: .82rem;
   margin-top: .75rem;
@@ -533,5 +533,3 @@ select.dr-input { cursor: pointer; }
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
-
-

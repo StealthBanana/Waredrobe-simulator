@@ -51,7 +51,7 @@ function _initCanvas() {
   canvas = new fabric.Canvas('dressingCanvas', {
     width:                 cW,
     height:                cH,
-    backgroundColor:       '#16213e',
+    backgroundColor:       '#1c1510',
     preserveObjectStacking:true,
     selection:             true,
   });
@@ -135,8 +135,8 @@ async function sidebarAddItem(clothingId, clothingUrl, category, name) {
         scaleX: pos.width  / img.width,
         scaleY: pos.height / img.height,
         // Style the selection handles with the app accent colour
-        borderColor:         '#e91e8c',
-        cornerColor:         '#e91e8c',
+        borderColor:         '#b8763e',
+        cornerColor:         '#b8763e',
         cornerStyle:         'circle',
         cornerSize:          10,
         transparentCorners:  false,
