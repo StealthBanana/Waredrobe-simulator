@@ -158,7 +158,7 @@ async function sidebarAddItem(clothingId, clothingUrl, category, name) {
 // Desktop drag and drop  (from sidebar to canvas)
 // ─────────────────────────────────────────────────────────────────────────────
 function _setupDragDrop() {
-  const canvasEl  = document.getElementById('dressingCanvas');
+  const dropZone  = document.getElementById('canvasContainer');
   const dropHint  = document.getElementById('dropHint');
 
   // Make sidebar items draggable and attach their data
@@ -174,14 +174,14 @@ function _setupDragDrop() {
     item.addEventListener('dragend', () => { dropHint.hidden = true; });
   });
 
-  canvasEl.addEventListener('dragover', e => {
+  dropZone.addEventListener('dragover', e => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   });
 
-  canvasEl.addEventListener('dragleave', () => { dropHint.hidden = true; });
+  dropZone.addEventListener('dragleave', () => { dropHint.hidden = true; });
 
-  canvasEl.addEventListener('drop', e => {
+  dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropHint.hidden = true;
     const id   = parseInt(e.dataTransfer.getData('clothing-id'));
