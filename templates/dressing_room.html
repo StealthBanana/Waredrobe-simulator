@@ -40,9 +40,8 @@
       <div class="sidebar-item"
            data-id="{{ item.id }}"
            data-cat="{{ item.category }}"
-           data-name="{{ item.name }}"
-           onclick="toggleItem({{ item.id }}, '{{ item.name }}', '{{ item.category }}')"
-           title="Click to select · click again to deselect">
+           data-name="{{ item.name|e }}"
+           onclick="toggleItem({{ item.id }}, {{ item.name|tojson }}, {{ item.category|tojson }})"           title="Click to select · click again to deselect">
         <div class="sidebar-item-thumb">
           {% if item.thumbnail_filename %}
           <img src="{{ url_for('static', filename='uploads/clothing_processed/' ~ item.thumbnail_filename) }}"
