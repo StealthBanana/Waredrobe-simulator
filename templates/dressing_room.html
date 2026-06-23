@@ -41,7 +41,7 @@
            data-id="{{ item.id }}"
            data-cat="{{ item.category }}"
            data-name="{{ item.name|e }}"
-           onclick="toggleItem({{ item.id }}, {{ item.name|tojson }}, {{ item.category|tojson }})"
+           onclick='toggleItem({{ item.id }}, {{ item.name|tojson }}, {{ item.category|tojson }})'
            title="Click to select · click again to deselect">
         <div class="sidebar-item-thumb">
           {% if item.thumbnail_filename %}
@@ -123,10 +123,10 @@
         {% endif %}
         {% for outfit in saved_outfits %}
         <div class="outfit-row" id="outfit-{{ outfit.id }}">
-          <button class="outfit-load-btn" onclick="loadOutfit({{ outfit.id }})">
+          <button class="outfit-load-btn" onclick='loadOutfit({{ outfit.id }})'>
             {{ outfit.name }}
           </button>
-          <button class="outfit-del-btn" onclick="deleteOutfit({{ outfit.id }})" title="Delete">
+          <button class="outfit-del-btn" onclick='deleteOutfit({{ outfit.id }})' title="Delete">
             <i class="bi bi-trash"></i>
           </button>
         </div>
