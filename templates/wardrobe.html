@@ -5,7 +5,6 @@
 {% block content %}
 <div class="page-wrap">
 
-  <!-- ── Page header ──────────────────────────────────────────────────────── -->
   <div class="page-header">
     <div>
       <h1 class="page-title">My Wardrobe</h1>
@@ -25,9 +24,7 @@
 
   <div id="alert-container"></div>
 
-  <!-- ═════════════════════════════════════════════════════════════════════ -->
-  <!-- CLOTHES                                                               -->
-  <!-- ═════════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════ CLOTHES -->
   <section class="wardrobe-section">
     <div class="section-head">
       <div>
@@ -40,7 +37,6 @@
       </button>
     </div>
 
-    <!-- Category filter pills -->
     <div class="filter-row" id="categoryFilters">
       <button class="filter-pill active" data-cat="all">All</button>
       {% for cat in categories %}
@@ -50,7 +46,6 @@
       {% endfor %}
     </div>
 
-    <!-- Drop zone -->
     <div class="dropzone" id="clothingDropzone" tabindex="0" role="button"
          aria-label="Upload clothing image">
       <i class="bi bi-cloud-arrow-up dropzone-icon"></i>
@@ -59,7 +54,6 @@
       <input type="file" id="clothingFileInput" accept=".jpg,.jpeg,.png,.webp" hidden multiple>
     </div>
 
-    <!-- Grid -->
     <div class="item-grid" id="clothingGrid">
       {% if not clothing_items %}
       <div class="empty-state" id="clothingEmpty">
@@ -80,14 +74,12 @@
             {% else %}
             <div class="item-placeholder"><i class="bi bi-image"></i></div>
             {% endif %}
-
             <div class="item-card-overlay">
-              <button class="btn-icon-red" data-id="{{ item.id }}"
+              <button class="btn-icon-red"
                       onclick="deleteClothing({{ item.id }})" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
-
             {% if item.is_default %}
             <span class="starter-badge">Starter</span>
             {% endif %}
@@ -102,9 +94,7 @@
     </div>
   </section>
 
-  <!-- ═════════════════════════════════════════════════════════════════════ -->
-  <!-- MY PHOTOS                                                             -->
-  <!-- ═════════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════ PHOTOS -->
   <section class="wardrobe-section">
     <div class="section-head">
       <div>
@@ -118,7 +108,6 @@
       </button>
     </div>
 
-    <!-- Drop zone -->
     <div class="dropzone" id="personDropzone" tabindex="0" role="button"
          aria-label="Upload your photo">
       <i class="bi bi-person-bounding-box dropzone-icon"></i>
@@ -127,7 +116,6 @@
       <input type="file" id="personFileInput" accept=".jpg,.jpeg,.png,.webp" hidden>
     </div>
 
-    <!-- Grid -->
     <div class="item-grid" id="personGrid">
       {% if not person_photos %}
       <div class="empty-state" id="personEmpty">
@@ -147,7 +135,6 @@
             {% else %}
             <div class="item-placeholder"><i class="bi bi-person"></i></div>
             {% endif %}
-
             <div class="item-card-overlay">
               <a class="btn-icon-accent"
                  href="{{ url_for('dressing_room', person_id=photo.id) }}"
@@ -158,7 +145,6 @@
                 <i class="bi bi-trash"></i>
               </button>
             </div>
-
             {% if photo.pose_data %}
             <span class="pose-badge">
               <i class="bi bi-person-check me-1"></i>Pose Ready
@@ -177,12 +163,10 @@
     </div>
   </section>
 
-</div><!-- /page-wrap -->
+</div>
 
 
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL: Add clothing                                                      -->
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: Add clothing -->
 <div class="dr-modal-backdrop" id="modalAddClothing" hidden>
   <div class="dr-modal" role="dialog" aria-modal="true">
     <div class="dr-modal-header">
@@ -200,13 +184,22 @@
       <div class="dr-form-group">
         <label class="dr-label" for="clothingCategory">Category</label>
         <select id="clothingCategory" class="dr-input">
-          <option value="top">Top</option>
-          <option value="bottom">Bottom</option>
-          <option value="full_outfit">Full Outfit</option>
-          <option value="outerwear">Outerwear</option>
+          <option value="top">Top (shirt, t-shirt, blouse)</option>
+          <option value="bottom">Bottom (pants, skirt, jeans)</option>
+          <option value="full_outfit">Full Outfit (dress, jumpsuit)</option>
+          <option value="outerwear">Outerwear (jacket, coat)</option>
           <option value="shoes">Shoes</option>
-          <option value="accessory">Accessory</option>
+          <option value="accessory">Accessory (hat, bag, belt)</option>
         </select>
+      </div>
+      <!-- Tip about clothing photo quality -->
+      <div class="dr-info-box">
+        <i class="bi bi-lightbulb me-2" style="flex-shrink:0"></i>
+        <span>
+          <strong>Best results:</strong> flat-lay or hanger photos on a plain background.
+          <br>Avoid photos of people wearing the clothes — the whole person
+          will be composited, not just the garment.
+        </span>
       </div>
       <div class="dr-processing-note" id="clothingProcessing" hidden>
         <i class="bi bi-cpu me-2"></i>Removing background… 5–20 s on first run.
@@ -235,11 +228,11 @@
         <input id="personName" class="dr-input" type="text" placeholder="e.g. Summer look base">
       </div>
       <div class="dr-info-box">
-        <i class="bi bi-lightbulb me-2"></i>
-        Full body · facing forward · plain background gives the best results.
+        <i class="bi bi-lightbulb me-2" style="flex-shrink:0"></i>
+        <span>Full body · facing forward · plain background gives the best results.</span>
       </div>
       <div class="dr-processing-note" id="personProcessing" hidden>
-        <i class="bi bi-cpu me-2"></i>Processing photo… removing background &amp; detecting pose — 10–30 s.
+        <i class="bi bi-cpu me-2"></i>Processing photo — removing background &amp; detecting pose… 10–30 s.
       </div>
     </div>
     <div class="dr-modal-footer">
