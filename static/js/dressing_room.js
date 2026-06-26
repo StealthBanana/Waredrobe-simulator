@@ -1,25 +1,125 @@
 'use strict';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
 const _d          = document.getElementById('dr-data');
 const PERSON_ID   = parseInt(_d.dataset.personId);
+const PERSON_URL  = _d.dataset.personUrl;
 
-let selectedIds     = [];
-let currentResult   = null;
+let canvas         = null;   // Fabric.js instance
+let personImgW     = 0;      // original person photo pixel dimensions
+let personImgH     = 0;
+let personScaleX   = 1;      // scale applied to person photo on canvas
+let personScaleY   = 1;
+let personOffsetX  = 0;      // top-left corner of person photo on canvas
+let personOffsetY  = 0;
+let selectedIds    = [];
 let currentOutfitId = null;
-let compareMode     = false;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  _setupSidebarFilter();
-  _setupTryOnButton();
-  _setupResetButton();
-  _setupCompareButton();
-  _setupSaveModal();
-  document.querySelectorAll('.dr-modal-backdrop').forEach(b => {
-    b.addEventListener('click', e => { if (e.target === b) b.hidden = true; });
+  // Use rAF so the flexbox layout has settled before we measure dimensions
+  requestAnimationFrame(() => {
+    _initCanvas();
+    _setupSidebarFilter();
+    _setupTryOnButton();
+    _setupToolbarButtons();
+    _setupSaveModal();
+    _setupKeyboard();
+    document.querySelectorAll('.dr-modal-backdrop').forEach(b => {
+      b.addEventListener('click', e => { if (e.target === b) b.hidden = true; });
+    });
   });
 });
 
-// ── Item selection ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Canvas initialisation
+// ─────────────────────────────────────────────────────────────────────────────
+function _initCanvas() {
+  const outer = document.querySelector('.dr-canvas-outer');
+  const W     = Math.max(outer.clientWidth  - 16, 280);
+  const H     = Math.max(outer.clientHeight - 16, 380);
+
+  canvas = new fabric.Canvas('dressingCanvas', {
+    width:                  W,
+    height:                 H,
+    backgroundColor:        '#1c1510',
+    preserveObjectStacking: true,
+    selection:              true,
+  });
+
+  _loadPersonPhoto();
+  window.addEventListener('resize', _debounce(_resizeCanvas, 300));
+}
+
+function _loadPersonPhoto() {
+  fabric.Image.fromURL(PERSON_URL, img => {
+    personImgW = img.width;
+    personImgH = img.height;
+
+    const scale   = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.95;
+    personScaleX  = scale;
+    personScaleY  = scale;
+    personOffsetX = (canvas.width  - img.width  * scale) / 2;
+    personOffsetY = (canvas.height - img.height * scale) / 2;
+
+    img.set({
+      left:        personOffsetX + (img.width  * scale) / 2,
+      top:         personOffsetY + (img.height * scale) / 2,
+      scaleX:      scale,
+      scaleY:      scale,
+      originX:     'center',
+      originY:     'center',
+      selectable:  false,
+      evented:     false,
+      hoverCursor: 'default',
+      data:        { type: 'person' },
+    });
+
+    canvas.add(img);
+    canvas.renderAll();
+  });
+}
+
+function _resizeCanvas() {
+  const outer = document.querySelector('.dr-canvas-outer');
+  const W     = Math.max(outer.clientWidth  - 16, 280);
+  const H     = Math.max(outer.clientHeight - 16, 380);
+  const sx    = W / canvas.width;
+  const sy    = H / canvas.height;
+
+  canvas.setWidth(W);
+  canvas.setHeight(H);
+
+  canvas.getObjects().forEach(obj => {
+    if (obj.data?.type === 'person') {
+      const scale   = Math.min(W / personImgW, H / personImgH) * 0.95;
+      personScaleX  = scale;
+      personScaleY  = scale;
+      personOffsetX = (W - personImgW * scale) / 2;
+      personOffsetY = (H - personImgH * scale) / 2;
+      obj.set({
+        left:   personOffsetX + (personImgW * scale) / 2,
+        top:    personOffsetY + (personImgH * scale) / 2,
+        scaleX: scale,
+        scaleY: scale,
+      });
+    } else {
+      obj.set({ left: obj.left * sx, top: obj.top * sy,
+                scaleX: obj.scaleX * sx, scaleY: obj.scaleY * sy });
+    }
+    obj.setCoords();
+  });
+
+  canvas.renderAll();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sidebar item selection
+// ─────────────────────────────────────────────────────────────────────────────
 function toggleItem(id, name, category) {
   const el  = document.querySelector(`.sidebar-item[data-id="${id}"]`);
   const idx = selectedIds.indexOf(id);
@@ -43,7 +143,9 @@ function _updateSelectionUI() {
   }
 }
 
-// ── Sidebar category filter ───────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Sidebar category filter
+// ─────────────────────────────────────────────────────────────────────────────
 function _setupSidebarFilter() {
   document.querySelectorAll('.sf-pill').forEach(pill => {
     pill.addEventListener('click', () => {
@@ -51,30 +153,49 @@ function _setupSidebarFilter() {
       pill.classList.add('active');
       const cat = pill.dataset.cat;
       document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.toggle('hidden-by-filter', cat !== 'all' && item.dataset.cat !== cat);
+        item.classList.toggle('hidden-by-filter',
+          cat !== 'all' && item.dataset.cat !== cat);
       });
     });
   });
 }
 
-// ── Try On ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Try On — fetch positions and place on canvas
+// ─────────────────────────────────────────────────────────────────────────────
 function _setupTryOnButton() {
   document.getElementById('btnTryOn')?.addEventListener('click', _runTryOn);
 }
 
 async function _runTryOn() {
   if (!selectedIds.length) return;
-  _showLoading(true, 'Warping clothing to your body shape…');
+  _showLoading(true, 'Calculating clothing positions…');
+
   try {
-    const res  = await fetch('/api/try-on', {
+    const res  = await fetch('/api/try-on-layout', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ person_photo_id: PERSON_ID, clothing_ids: selectedIds }),
     });
     const data = await res.json();
-    if (!data.success) { showToast(data.error || 'Processing failed.', 'error'); return; }
-    currentResult = data.result_url + '?t=' + Date.now();
-    _showResult(currentResult);
+
+    if (!data.success) { showToast(data.error || 'Failed.', 'error'); return; }
+
+    // Remove any existing clothing layers
+    _clearClothing();
+
+    // Update person dimensions in case they changed
+    personImgW = data.person_width;
+    personImgH = data.person_height;
+
+    // Place each item on the canvas
+    await Promise.all(data.items.map(_addClothingItem));
+    canvas.renderAll();
+
+    // Show controls
+    _setPostTryOnButtons(true);
+    showToast('Drag items to adjust · corner handles to resize', 'success');
+
   } catch (err) {
     console.error(err);
     showToast('Network error — is the server running?', 'error');
@@ -83,75 +204,154 @@ async function _runTryOn() {
   }
 }
 
-// ── Result display ────────────────────────────────────────────────────────────
-function _showResult(url) {
-  const imgResult = document.getElementById('imgResult');
-  imgResult.onload = () => {
-    document.getElementById('imgOriginal').style.display = 'none';
-    imgResult.style.display = 'block';
-    document.getElementById('btnToggleCompare').style.display = '';
-    document.getElementById('btnSaveOutfit').style.display    = '';
-    document.getElementById('btnReset').style.display         = '';
-    const dl = document.getElementById('btnDownload');
-    dl.style.display = '';
-    dl.href = '/api/download-result?path=' + encodeURIComponent(currentResult.split('?')[0]);
-    compareMode = false;
-    document.getElementById('drViewer').classList.remove('compare-mode');
-    _updateCompareBadges();
-  };
-  imgResult.src = url;
+function _addClothingItem(item) {
+  return new Promise(resolve => {
+    fabric.Image.fromURL(item.url, img => {
+      // Convert from person-image coordinates to canvas coordinates
+      const x = personOffsetX + item.x      * personScaleX;
+      const y = personOffsetY + item.y      * personScaleY;
+      const w = item.width  * personScaleX;
+      const h = item.height * personScaleY;
+
+      img.set({
+        left:               x + w / 2,
+        top:                y + h / 2,
+        originX:            'center',
+        originY:            'center',
+        scaleX:             w / img.width,
+        scaleY:             h / img.height,
+        hasControls:        true,
+        hasBorders:         true,
+        borderColor:        '#b8763e',
+        cornerColor:        '#b8763e',
+        cornerStyle:        'circle',
+        cornerSize:         10,
+        transparentCorners: false,
+        data: { type: 'clothing', id: item.id, name: item.name },
+      });
+
+      canvas.add(img);
+      resolve();
+    });
+  });
 }
 
-function _setupResetButton() {
+// ─────────────────────────────────────────────────────────────────────────────
+// Toolbar buttons
+// ─────────────────────────────────────────────────────────────────────────────
+function _setupToolbarButtons() {
+
+  // Delete selected clothing item
+  document.getElementById('btnDeleteSelected')?.addEventListener('click', () => {
+    const obj = canvas.getActiveObject();
+    if (obj?.data?.type === 'clothing') { canvas.remove(obj); canvas.renderAll(); }
+  });
+
+  // Bring forward
+  document.getElementById('btnBringFwd')?.addEventListener('click', () => {
+    const obj = canvas.getActiveObject();
+    if (obj) { canvas.bringForward(obj); canvas.renderAll(); }
+  });
+
+  // Send backward (never below the person photo)
+  document.getElementById('btnSendBack')?.addEventListener('click', () => {
+    const obj = canvas.getActiveObject();
+    if (obj?.data?.type === 'clothing') {
+      canvas.sendBackwards(obj);
+      const person = canvas.getObjects().find(o => o.data?.type === 'person');
+      if (person) canvas.sendToBack(person);
+      canvas.renderAll();
+    }
+  });
+
+  // Clear all clothing
+  document.getElementById('btnClearClothing')?.addEventListener('click', () => {
+    if (!confirm('Remove all clothing from the canvas?')) return;
+    _clearClothing();
+  });
+
+  // Download as PNG
+  document.getElementById('btnDownload')?.addEventListener('click', _downloadCanvas);
+
+  // Reset everything
   document.getElementById('btnReset')?.addEventListener('click', () => {
-    currentResult = null; compareMode = false;
-    document.getElementById('imgResult').style.display   = 'none';
-    document.getElementById('imgOriginal').style.display = 'block';
-    ['btnToggleCompare','btnSaveOutfit','btnDownload','btnReset'].forEach(id => {
-      document.getElementById(id).style.display = 'none';
-    });
-    document.getElementById('drViewer').classList.remove('compare-mode');
-    _updateCompareBadges();
+    _clearClothing();
     selectedIds = [];
-    document.querySelectorAll('.sidebar-item.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.sidebar-item.selected')
+      .forEach(el => el.classList.remove('selected'));
     _updateSelectionUI();
     currentOutfitId = null;
+    _setPostTryOnButtons(false);
   });
 }
 
-// ── Before / after compare ────────────────────────────────────────────────────
-function _setupCompareButton() {
-  document.getElementById('btnToggleCompare')?.addEventListener('click', () => {
-    if (!currentResult) return;
-    compareMode = !compareMode;
-    const orig   = document.getElementById('imgOriginal');
-    const result = document.getElementById('imgResult');
-    const viewer = document.getElementById('drViewer');
-    if (compareMode) {
-      orig.style.display = 'block'; result.style.display = 'block';
-      viewer.classList.add('compare-mode');
-    } else {
-      orig.style.display = 'none'; result.style.display = 'block';
-      viewer.classList.remove('compare-mode');
+function _clearClothing() {
+  canvas.getObjects()
+    .filter(o => o.data?.type === 'clothing')
+    .forEach(o => canvas.remove(o));
+  canvas.renderAll();
+}
+
+// Show or hide all the buttons that only make sense after a try-on
+function _setPostTryOnButtons(show) {
+  const ids = [
+    'btnDeleteSelected', 'divLayer', 'btnBringFwd', 'btnSendBack',
+    'btnClearClothing', 'btnSaveOutfit', 'btnDownload', 'btnReset',
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
+  const hint = document.getElementById('drCanvasHint');
+  if (hint) hint.style.display = show ? '' : 'none';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Download — export canvas as PNG with white background
+// ─────────────────────────────────────────────────────────────────────────────
+function _downloadCanvas() {
+  const prevBg = canvas.backgroundColor;
+  canvas.backgroundColor = '#ffffff';
+  canvas.renderAll();
+
+  const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+
+  canvas.backgroundColor = prevBg;
+  canvas.renderAll();
+
+  const link    = document.createElement('a');
+  link.download = 'dressroom_result.png';
+  link.href     = dataURL;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keyboard shortcuts
+// ─────────────────────────────────────────────────────────────────────────────
+function _setupKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const obj = canvas.getActiveObject();
+      if (obj?.data?.type === 'clothing') { canvas.remove(obj); canvas.renderAll(); }
     }
-    _updateCompareBadges();
   });
 }
 
-function _updateCompareBadges() {
-  const show = compareMode && !!currentResult;
-  document.getElementById('badgeBefore').style.display = show ? '' : 'none';
-  document.getElementById('badgeAfter').style.display  = show ? '' : 'none';
-}
-
-// ── Loading overlay ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading overlay
+// ─────────────────────────────────────────────────────────────────────────────
 function _showLoading(show, msg) {
   const el = document.getElementById('viewerLoading');
   if (msg) document.getElementById('loadingMsg').textContent = msg;
   el.hidden = !show;
 }
 
-// ── Save / load / delete outfits ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Save / load / delete outfits
+// ─────────────────────────────────────────────────────────────────────────────
 function _setupSaveModal() {
   document.getElementById('btnSaveOutfit')?.addEventListener('click', () => {
     document.getElementById('outfitNameInput').value = '';
@@ -172,11 +372,19 @@ function _setupSaveModal() {
 
 async function _saveOutfit(name) {
   try {
-    const res  = await fetch('/api/outfits', {
+    const canvasJSON = canvas.toJSON(['data']);
+    const res = await fetch('/api/outfits', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: currentOutfitId, name, person_photo_id: PERSON_ID,
-        outfit_data: { clothing_ids: selectedIds, result_url: currentResult },
+        outfit_data: {
+          clothing_ids:   selectedIds,
+          canvas_json:    canvasJSON,
+          person_offset_x: personOffsetX,
+          person_offset_y: personOffsetY,
+          person_scale_x:  personScaleX,
+          person_scale_y:  personScaleY,
+        },
       }),
     });
     const saved = await res.json();
@@ -191,13 +399,28 @@ async function loadOutfit(outfitId) {
     const res    = await fetch(`/api/outfits/${outfitId}`);
     const outfit = await res.json();
     const od     = outfit.outfit_data || {};
-    selectedIds  = (od.clothing_ids || []).map(Number);
+
+    if (od.canvas_json) {
+      canvas.loadFromJSON(od.canvas_json, () => {
+        canvas.getObjects().forEach(obj => {
+          if (obj.data?.type === 'person') {
+            obj.selectable  = false;
+            obj.evented     = false;
+            obj.hoverCursor = 'default';
+          }
+        });
+        canvas.renderAll();
+      });
+    }
+
+    selectedIds = (od.clothing_ids || []).map(Number);
     document.querySelectorAll('.sidebar-item').forEach(el => {
       el.classList.toggle('selected', selectedIds.includes(parseInt(el.dataset.id)));
     });
     _updateSelectionUI();
-    if (od.result_url) _showResult(od.result_url);
+
     currentOutfitId = outfit.id;
+    _setPostTryOnButtons(true);
     showToast(`Loaded: ${outfit.name}`, 'success');
   } catch { showToast('Could not load outfit.', 'error'); }
 }
@@ -229,6 +452,14 @@ async function _refreshOutfitList() {
           <i class="bi bi-trash"></i></button>
       </div>`).join('');
   } catch { /* ignore */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────────────────────────────────────
+function _debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
 function _esc(s) {

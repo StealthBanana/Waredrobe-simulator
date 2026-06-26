@@ -1,5 +1,5 @@
 /* ============================================================
-   DRESSING ROOM
+   DRESSING ROOM — interactive canvas layout
    ============================================================ */
 
 .dr-room-wrap {
@@ -82,7 +82,6 @@
   font-size: .63rem; color: var(--accent);
   text-transform: uppercase; letter-spacing: .3px;
 }
-
 .sidebar-item-check {
   flex-shrink: 0; width: 20px; height: 20px;
   background: var(--accent); border-radius: 50%;
@@ -99,19 +98,18 @@
 }
 .selected-summary {
   font-size: .72rem; color: var(--text-secondary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  min-height: 1rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1rem;
 }
+.mt-1 { margin-top: .25rem; }
 
-/* ── CENTRE: viewer area ─────────────────────────────────────────────────── */
-.dr-canvas-area,
+/* ── CENTRE: canvas area ─────────────────────────────────────────────────── */
 .dr-viewer-area {
   flex: 1; display: flex; flex-direction: column;
   overflow: hidden; background: var(--bg-base); min-width: 0;
 }
 
 .dr-toolbar {
-  display: flex; align-items: center; gap: .35rem;
+  display: flex; align-items: center; gap: .3rem;
   padding: .5rem .85rem; background: var(--bg-surface);
   border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
 }
@@ -126,41 +124,42 @@
 .tb-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
 .tb-btn-save  { border-color: var(--accent); color: var(--accent); }
 .tb-btn-save:hover { background: var(--accent); color: #fff; }
+.tb-btn-clear:hover { border-color: var(--danger); color: var(--danger); }
 .tb-photo-name {
   font-size: .8rem; color: var(--text-secondary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 180px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
 }
 .tb-divider { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
-.dr-viewer-outer {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 1rem; overflow: hidden;
+/* Canvas outer wrapper — fills remaining height */
+.dr-canvas-outer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: .75rem;
 }
-.dr-viewer {
+
+/* Canvas container — Fabric.js stacks its elements inside here */
+.dr-canvas-container {
   position: relative;
-  max-width: 100%; max-height: 100%;
-  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  height: 100%;
 }
-.viewer-img {
-  max-width: 100%; max-height: calc(100vh - var(--nav-h) - 120px);
-  object-fit: contain; border-radius: var(--radius-md);
+
+/* The raw <canvas> element — Fabric.js will control its size */
+#dressingCanvas {
   display: block;
+  border-radius: var(--radius-md);
 }
 
-.dr-viewer.compare-mode { gap: .75rem; align-items: flex-start; }
-.dr-viewer.compare-mode .viewer-img { max-width: 48%; }
-
-.compare-badge {
-  position: absolute; top: .5rem;
-  background: rgba(10,8,5,.75); backdrop-filter: blur(4px);
-  border: 1px solid var(--border); color: var(--text-secondary);
-  border-radius: 100px; padding: .2rem .65rem;
-  font-size: .7rem; font-weight: 600; pointer-events: none;
+/* Fabric.js upper-canvas (invisible interaction layer) must stay on top */
+.dr-canvas-container .upper-canvas {
+  border-radius: var(--radius-md);
 }
-.badge-before { left:  .5rem; }
-.badge-after  { right: .5rem; }
 
+/* Loading overlay */
 .viewer-loading {
   position: absolute; inset: 0;
   background: rgba(18,14,10,.82); backdrop-filter: blur(3px);
@@ -176,6 +175,21 @@
   border-radius: 50%; animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Hint bar below canvas */
+.dr-canvas-hint {
+  flex-shrink: 0;
+  padding: .35rem 1rem;
+  font-size: .72rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.dr-canvas-hint kbd {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 3px; padding: .05rem .35rem; font-size: .68rem;
+}
 
 /* ── RIGHT PANEL ─────────────────────────────────────────────────────────── */
 .dr-panel {
@@ -242,24 +256,30 @@
     position: absolute; top: 3px; right: 3px;
     width: 16px; height: 16px; font-size: .6rem;
   }
-
-  .dr-sidebar-foot { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .4rem; }
+  .dr-sidebar-foot {
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: .4rem;
+  }
   .selected-summary { flex: 1; min-width: 0; }
 
-  .dr-viewer-area { flex: 1; }
+  .dr-viewer-area { flex: 1; min-height: 400px; }
+  .dr-canvas-outer { padding: .4rem; }
 
   .dr-panel {
     width: 100%; min-width: 0; max-height: 140px;
     border-left: none; border-top: 1px solid var(--border);
     flex-direction: row;
   }
-  .dr-panel-section { border-bottom: none; border-right: 1px solid var(--border); min-width: 100px; }
-  .outfit-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: .4rem; }
+  .dr-panel-section {
+    border-bottom: none; border-right: 1px solid var(--border); min-width: 100px;
+  }
+  .outfit-list {
+    flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: .4rem;
+  }
   .outfit-row  { flex-shrink: 0; min-width: 110px; }
   .dr-panel-tip { display: none; }
 
   .tb-label { display: none; }
-  .dr-viewer.compare-mode .viewer-img { max-width: 47%; }
+  .dr-canvas-hint { font-size: .65rem; padding: .25rem .5rem; }
 }
 
 @media (max-width: 480px) {

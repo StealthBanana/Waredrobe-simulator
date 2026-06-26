@@ -66,49 +66,68 @@
         <i class="bi bi-magic me-2"></i>Try On
       </button>
       <button class="btn-ghost w-100 mt-1" id="btnReset" style="display:none">
-        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to original
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
       </button>
     </div>
   </aside>
 
-  <!-- CENTRE: result viewer -->
+  <!-- CENTRE: interactive canvas -->
   <div class="dr-viewer-area">
 
+    <!-- Toolbar -->
     <div class="dr-toolbar">
       <a class="tb-btn" href="{{ url_for('dressing_room_select') }}">
         <i class="bi bi-arrow-left"></i><span class="tb-label"> Photos</span>
       </a>
       <span class="tb-photo-name">{{ person_photo.name }}</span>
-      <div style="margin-left:auto;display:flex;gap:.4rem;">
-        <button class="tb-btn" id="btnToggleCompare" style="display:none" title="Toggle original / result">
-          <i class="bi bi-intersect"></i><span class="tb-label"> Compare</span>
-        </button>
+
+      <!-- Item controls — hidden until first Try On -->
+      <button class="tb-btn" id="btnDeleteSelected" style="display:none"
+              title="Remove selected item (Delete key)">
+        <i class="bi bi-trash"></i><span class="tb-label"> Remove</span>
+      </button>
+      <div class="tb-divider" id="divLayer" style="display:none"></div>
+      <button class="tb-btn" id="btnBringFwd" style="display:none" title="Bring forward">
+        <i class="bi bi-layer-forward"></i><span class="tb-label"> Forward</span>
+      </button>
+      <button class="tb-btn" id="btnSendBack" style="display:none" title="Send backward">
+        <i class="bi bi-layer-backward"></i><span class="tb-label"> Back</span>
+      </button>
+      <button class="tb-btn tb-btn-clear" id="btnClearClothing" style="display:none"
+              title="Clear all clothing">
+        <i class="bi bi-x-circle"></i><span class="tb-label"> Clear all</span>
+      </button>
+
+      <div style="margin-left:auto; display:flex; gap:.4rem;">
         <button class="tb-btn tb-btn-save" id="btnSaveOutfit" style="display:none">
           <i class="bi bi-floppy"></i><span class="tb-label"> Save</span>
         </button>
-        <a class="tb-btn" id="btnDownload" style="display:none" download="dressroom_result.png">
+        <button class="tb-btn" id="btnDownload" style="display:none"
+                title="Download result as PNG">
           <i class="bi bi-download"></i><span class="tb-label"> Download</span>
-        </a>
+        </button>
       </div>
     </div>
 
-    <div class="dr-viewer-outer">
-      <div class="dr-viewer" id="drViewer">
-        <img id="imgOriginal"
-             src="{{ url_for('static', filename='uploads/person_processed/' ~ person_photo.processed_filename) }}"
-             alt="Your photo" class="viewer-img">
+    <!-- Canvas area -->
+    <div class="dr-canvas-outer">
+      <div id="canvasContainer" class="dr-canvas-container">
+        <canvas id="dressingCanvas"></canvas>
 
-        <img id="imgResult" src="" alt="Try-on result"
-             class="viewer-img result-img" style="display:none">
-
+        <!-- Loading overlay -->
         <div id="viewerLoading" class="viewer-loading" hidden>
           <div class="spinner-ring"></div>
-          <p id="loadingMsg">Processing…</p>
+          <p id="loadingMsg">Calculating positions…</p>
         </div>
-
-        <span class="compare-badge badge-before" id="badgeBefore" style="display:none">Original</span>
-        <span class="compare-badge badge-after"  id="badgeAfter"  style="display:none">Try-On</span>
       </div>
+    </div>
+
+    <!-- Hint bar below canvas -->
+    <div class="dr-canvas-hint" id="drCanvasHint" style="display:none">
+      <i class="bi bi-arrows-move me-1"></i>Drag to reposition &nbsp;·&nbsp;
+      <i class="bi bi-arrows-angle-expand me-1"></i>Corner handles to resize &nbsp;·&nbsp;
+      <i class="bi bi-arrow-repeat me-1"></i>Top handle to rotate &nbsp;·&nbsp;
+      <kbd>Del</kbd> to remove selected
     </div>
 
   </div>
@@ -136,8 +155,8 @@
 
     <div class="dr-panel-tip">
       <strong>How it works:</strong><br>
-      Click clothes on the left to select them, then hit <em>Try On</em>.
-      The result is processed on your computer — no internet needed.
+      Select clothes on the left, hit <em>Try On</em>, then drag each item
+      to adjust position and size.
     </div>
   </aside>
 
@@ -168,5 +187,6 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="{{ url_for('static', filename='js/dressing_room.js') }}"></script>
 {% endblock %}

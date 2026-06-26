@@ -178,11 +178,21 @@ def delete_person(photo_id):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Try-on (server-side image compositing)
+# Try-on layout  (returns positions for Fabric.js canvas — no compositing)
 # ─────────────────────────────────────────────────────────────────────────────
 
-@app.route("/api/try-on", methods=["POST"])
-def api_try_on():
+@app.route("/api/try-on-layout", methods=["POST"])
+def api_try_on_layout():
+    """
+    Calculate initial clothing positions using pose data and return them as JSON.
+    The client places each item as a Fabric.js object and lets the user move them.
+
+    Body: { "person_photo_id": int, "clothing_ids": [int, ...] }
+    Returns: {
+        success, person_url, person_width, person_height,
+        items: [ { id, name, category, url, x, y, width, height }, ... ]
+    }
+    """
     data            = request.get_json(silent=True) or {}
     person_photo_id = data.get("person_photo_id")
     clothing_ids    = data.get("clothing_ids", [])
@@ -198,34 +208,89 @@ def api_try_on():
     person_path   = os.path.join(upload_folder, "person_processed",
                                  person_photo.processed_filename)
 
-    clothing_items = []
+    # Get person image pixel dimensions
+    try:
+        import cv2
+        _img = cv2.imread(person_path)
+        if _img is None:
+            raise ValueError("Could not read image")
+        ph, pw = _img.shape[:2]
+    except Exception as e:
+        logger.error(f"Could not read person image: {e}")
+        return jsonify({"success": False, "error": "Could not read person image."}), 500
+
+    pose_data = person_photo.get_pose_data()
+
+    # Import vton helpers for position calculation
+    from utils.vton import _target_region, _crop_to_content, _load_bgra, _CATEGORY_ORDER
+
+    # Sort by natural layering order
+    items_raw = []
     for cid in clothing_ids:
         item = db.session.get(ClothingItem, cid)
         if item and item.processed_filename:
-            c_path = os.path.join(upload_folder, "clothing_processed",
-                                  item.processed_filename)
-            clothing_items.append((c_path, item.category))
+            items_raw.append(item)
+    items_raw.sort(key=lambda x: _CATEGORY_ORDER.get(x.category, 99))
 
-    if not clothing_items:
-        return jsonify({"success": False, "error": "None of the selected items could be loaded."}), 400
+    result_items = []
+    for item in items_raw:
+        c_path = os.path.join(upload_folder, "clothing_processed", item.processed_filename)
+        c_img  = _load_bgra(c_path)
+        if c_img is None:
+            continue
 
-    try:
-        from utils.vton import process_try_on
-        output_dir  = os.path.join(upload_folder, "tryon_results")
-        result_path = process_try_on(
-            person_path    = person_path,
-            clothing_items = clothing_items,
-            pose_data      = person_photo.get_pose_data(),
-            output_dir     = output_dir,
-        )
-        rel_path   = os.path.relpath(result_path, os.path.join(BASEDIR, "static"))
-        result_url = "/static/" + rel_path.replace("\\", "/")
-        return jsonify({"success": True, "result_url": result_url})
+        cropped = _crop_to_content(c_img)
+        if cropped is None:
+            continue
 
-    except Exception as e:
-        logger.error(f"Try-on failed: {e}", exc_info=True)
-        return jsonify({"success": False, "error": "Processing failed. Please try again."}), 500
+        ch_img, cw_img = cropped.shape[:2]
 
+        # Get target region in person-image coordinates
+        region = _target_region(pose_data, item.category, pw, ph)
+        tw, th = region["w"], region["h"]
+
+        # Scale to fit region while preserving aspect ratio
+        scale = th / ch_img
+        nw    = int(cw_img * scale)
+        nh    = int(ch_img * scale)
+        if nw > tw:
+            scale = tw / cw_img
+            nw    = int(cw_img * scale)
+            nh    = int(ch_img * scale)
+
+        nw = max(nw, 10)
+        nh = max(nh, 10)
+
+        x = int(region["cx"] - nw / 2)
+        y = int(region["cy"] - nh / 2)
+
+        result_items.append({
+            "id":       item.id,
+            "name":     item.name,
+            "category": item.category,
+            "url":      url_for("static",
+                                filename=f"uploads/clothing_processed/{item.processed_filename}"),
+            "x":      x,
+            "y":      y,
+            "width":  nw,
+            "height": nh,
+        })
+
+    person_url = url_for("static",
+                          filename=f"uploads/person_processed/{person_photo.processed_filename}")
+
+    return jsonify({
+        "success":       True,
+        "person_url":    person_url,
+        "person_width":  pw,
+        "person_height": ph,
+        "items":         result_items,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Download endpoint (kept for any server-side export needs)
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/download-result")
 def api_download_result():
